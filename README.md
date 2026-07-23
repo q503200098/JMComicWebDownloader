@@ -1,6 +1,6 @@
 # JMComic Downloader
 
-一个简洁美观的禁漫天堂漫画下载管理器，支持 Docker / Windows / macOS 三端部署。
+一个简洁美观的禁漫天堂漫画下载管理器，支持 Docker / Windows / macOS 三端部署，目前1.0版本仅实现了Windows下使用，其他各端待开发。
 
 ## 功能特性
 
