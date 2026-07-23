@@ -1,0 +1,312 @@
+from flask import Flask, request, render_template_string
+import subprocess
+import os
+
+
+app = Flask(__name__)
+
+
+BASE_DIR="/app"
+
+IDS_FILE="/app/ids.txt"
+DONE_FILE="/app/done.txt"
+
+
+HTML="""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<title>JMComic管理</title>
+
+<style>
+
+body{
+font-family:Arial;
+margin:40px;
+}
+
+input{
+height:30px;
+width:300px;
+}
+
+button{
+height:35px;
+margin:5px;
+}
+
+textarea{
+width:600px;
+height:150px;
+}
+
+.item{
+border:1px solid #ddd;
+padding:10px;
+margin:5px;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h1>JMComic 管理</h1>
+
+
+
+<h2>🔍 搜索漫画</h2>
+
+
+<form action="/search" method="post">
+
+<input name="keyword"
+placeholder="输入关键词">
+
+<button>
+搜索
+</button>
+
+</form>
+
+
+
+{% if results %}
+
+<h3>搜索结果</h3>
+
+
+{% for r in results %}
+
+<div class="item">
+
+{{r.title}}
+
+<br>
+
+ID:
+{{r.id}}
+
+
+<form action="/add" method="post">
+
+<input type="hidden"
+name="id"
+value="{{r.id}}">
+
+<button>
+加入下载
+</button>
+
+</form>
+
+
+</div>
+
+{% endfor %}
+
+{% endif %}
+
+
+
+
+<h2>添加漫画ID</h2>
+
+
+<form method="post">
+
+<input name="id"
+placeholder="输入漫画ID">
+
+<button>
+加入队列
+</button>
+
+</form>
+
+
+
+
+<h2>下载操作</h2>
+
+
+<form action="/download" method="post">
+
+<button>
+开始下载
+</button>
+
+</form>
+
+
+<form action="/clear_ids" method="post">
+
+<button>
+清空下载队列
+</button>
+
+</form>
+
+
+
+<h2>当前任务</h2>
+
+<textarea readonly>
+{{ids}}
+</textarea>
+
+
+<h2>完成记录</h2>
+
+<textarea readonly>
+{{done}}
+</textarea>
+
+
+
+</body>
+</html>
+"""
+
+
+def read_file(path):
+
+    if os.path.exists(path):
+
+        return open(
+            path,
+            encoding="utf-8"
+        ).read()
+
+    return ""
+
+
+
+@app.route("/",methods=["GET","POST"])
+def index():
+
+    if request.method=="POST":
+
+        mid=request.form.get("id")
+
+        if mid:
+
+            with open(
+                IDS_FILE,
+                "a",
+                encoding="utf-8"
+            ) as f:
+
+                f.write(mid.strip()+"\n")
+
+
+    return render_template_string(
+        HTML,
+        ids=read_file(IDS_FILE),
+        done=read_file(DONE_FILE),
+        results=[]
+    )
+
+
+
+@app.route("/search",methods=["POST"])
+def search():
+
+
+    keyword=request.form.get("keyword")
+
+
+    results=[]
+
+
+    if keyword:
+
+        out=subprocess.check_output(
+            [
+                "python",
+                "/app/scripts/search.py",
+                keyword
+            ],
+            text=True
+        )
+
+
+        for line in out.splitlines():
+
+            if "|" in line:
+
+                aid,title=line.split("|",1)
+
+                results.append(
+                    {
+                    "id":aid,
+                    "title":title
+                    }
+                )
+
+
+    return render_template_string(
+        HTML,
+        ids=read_file(IDS_FILE),
+        done=read_file(DONE_FILE),
+        results=results
+    )
+
+
+
+@app.route("/add",methods=["POST"])
+def add():
+
+
+    aid=request.form.get("id")
+
+
+    with open(
+        IDS_FILE,
+        "a",
+        encoding="utf-8"
+    ) as f:
+
+        f.write(aid+"\n")
+
+
+    return "已加入队列"
+
+
+
+@app.route("/download",methods=["POST"])
+def download():
+
+
+    subprocess.Popen(
+        [
+            "python",
+            "/app/scripts/download.py"
+        ]
+    )
+
+    return "开始下载"
+
+
+
+@app.route("/clear_ids",methods=["POST"])
+def clear_ids():
+
+    open(
+        IDS_FILE,
+        "w"
+    ).close()
+
+    return "完成"
+
+
+
+app.run(
+    host="0.0.0.0",
+    port=8080
+)

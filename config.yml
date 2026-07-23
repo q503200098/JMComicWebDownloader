@@ -1,0 +1,7 @@
+dir_rule:
+  base_dir: C:/Users/50320/Desktop/test-downloads
+  rule: Bd_Aid_Pid
+
+download:
+  image:
+    suffix: .jpg
